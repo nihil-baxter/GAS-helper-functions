@@ -20,6 +20,9 @@ function importCsv(searchString, searchPlace, fileName, parseConfig, deleteMailF
         var threads, message, attachments, attName, parseString, parsedCsv, data;
         var attFound = false;
         threads = GmailApp.search(searchString);
+        if (threads.length == 0) {
+            return Error("No Email matched the search string")
+        }
         message = threads[0].getMessages()[0];
         attachments = message.getAttachments();
         if (attachments.length == 0) {
@@ -28,6 +31,7 @@ function importCsv(searchString, searchPlace, fileName, parseConfig, deleteMailF
         if (attachments.length > 1 && fileName === "") {
             return Error("More than one attachment, please provide a filename.");
         }
+        var i;
         for(i=0;i<attachments.length;i++) {
             attName = attachments[i].getName();
             if(attName.slice(-3).toUpperCase() === 'CSV' && attName.indexOf(fileName) > -1) {

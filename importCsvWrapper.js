@@ -1,9 +1,8 @@
-function importCsvWrapper(type, sheetName, ssId, startColumn, removeCsvHeader, headerRow, countRowsByCol) {
+function addData(data,type, sheetName, ssId, startColumn, removeCsvHeader, headerRow, countRowsByCol) {
     var ss = ssId ? SpreadsheetApp.openById(ssId) : SpreadsheetApp.getActiveSpreadsheet()
     var sheet = ss.getSheetByName(sheetName)
     headerRow = headerRow || 0
     startColumn = startColumn || 1
-    var data = importCsv(/*add parameters*/)
     if (type == "r") {
         if (removeCsvHeader == true) {
             data.shift()
