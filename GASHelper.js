@@ -38,6 +38,9 @@
                 keys.splice(keys.indexOf("type"),1)
                 if(condition.type == "AND") {
                     bool = keys.every(function (key) {
+                        if (typeof condition[key] == "function") {
+                            return condition[key](row[sourceHeader.indexOf(key)])
+                        }
                         if (Array.isArray(condition[key])) {
                             return condition[key].some(function(item) {
                                 return item == row[sourceHeader.indexOf(key)]
@@ -51,6 +54,9 @@
                 }
                 if (condition.type == "OR") {
                     bool = keys.some(function (key) {
+                        if (typeof condition[key] == "function") {
+                            return condition[key](row[sourceHeader.indexOf(key)])
+                        }
                         if (Array.isArray(condition[key])) {
                             return condition[key].some(function(item) {
                                 return item == row[sourceHeader.indexOf(key)]
