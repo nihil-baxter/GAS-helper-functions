@@ -1,3 +1,8 @@
+//SCRIPT_NAME = GAS-Helper-Functions
+//SCRIPT_VERSION = dev.v0_PL
+//SCRIPT_ID = 1x4QZqy-MRtnWwgygqMPjokDo9amDbrGzn6hK_oceEHgsT4AlDTOEng5e
+
+
 ;(function (root,factory) {
     root.GASHelper = factory()
 })(this, function() {
