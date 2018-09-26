@@ -431,12 +431,95 @@
         }
         GmailApp.sendEmail(recipient, subject, text, emailObj);
     }
+
+    function moveValues(sourceName,targetName,conObj,headerRows,inputStartCol,targetArr) {
+        headerRows = headerRows == undefined ? [1,1] : typeof headerRows == "number" ? [headerRows,1] : headerRows;
+        
+        inputStartCol = inputStartCol == undefined ? 1 : inputStartCol;
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        var sourceSheet = ss.getSheetByName(sourceName);
+        var targetSheet = ss.getSheetByName(targetName);
+        var sourceData = sourceSheet.getDataRange().getValues();
+        var sourceHeader = sourceData[headerRows[0]-1];
+        sourceData.splice(0,headerRows[0]);
+        var targetArrType = "whole";
+        if (targetArr != undefined) {
+            if(targetArr.every(function(item) {return typeof item == "number"})) {
+                targetArrType = "number"
+            } else if (targetArr.every(function(item) {return typeof item == "string"})) {
+                if (targetArr.every(function(item) {return sourceHeader.indexOf(item) > -1})) {
+                    targetArrType = "header"
+                } else {
+                    targetArrType = "column"
+                }
+            }
+        }
+        var orKey, andKey;
+        var newData = [];
+        sourceData.forEach(function(row) {
+            var addRowBool = false 
+            if (typeof conObj == "function") {
+                addRowBool = conObj(row)
+            }
+            if (Array.isArray(conObj)) {
+                addRowBool = conObj.some(function(orObj) {
+                    return Object.keys(orObj).every(function(andKey) {
+                        return row[sourceHeader.indexOf(andKey)].toString().trim().toUpperCase() == conObj[orKey][andKey].trim().toUpperCase()
+                    })
+                })
+            }
+            if (typeof conObj == "object") {
+                addRowBool = Object.keys(conObj).every(function(key) {
+                  var test = conObj[key]
+                    return row[sourceHeader.indexOf(key)].toString().trim().toUpperCase() == conObj[key].trim().toUpperCase()
+                })
+            }
+            if (addRowBool === true) {
+                switch (targetArrType) {
+                    case "whole":
+                        newData.push(row);
+                        break;
+                    case "number":
+                        var tempArr = [];
+                        targetArr.forEach(function(num) {
+                            tempArr.push(row[num-1]);
+                        });
+                        newData.push(tempArr)
+                        break;
+                    case "header":
+                        var tempArr = [];
+                        targetArr.forEach(function(header) {
+                            tempArr.push(row[sourceHeader.indexOf(header)]);
+                        });
+                        newData.push(tempArr)
+                        break;
+                    case "column":
+                        var tempArr = [];
+                        targetArr.forEach(function(letters) {
+                            var sum = 0;
+                            letters.split("").forEach(function(letter,index) {
+                                sum *= 26;
+                                sum += (letters.charCodeAt(index) - ("A".charCodeAt(0)-1));  
+                            })
+                            tempArr.push(row[sum-1]);
+                        });
+                        newData.push(tempArr)
+                        break;
+                    default:
+                        throw new Error("The format of targetArr doesn't fit the specifications")
+                }
+            }
+        });
+        targetSheet.getRange(targetSheet.getLastRow()+1,inputStartCol,newData.length,newData[0].length).setValues(newData);
+        
+    }
     
     GASHelper.archive = archive
     GASHelper.compare = listCompare
     GASHelper.importCsv = importCsv
     GASHelper.addDataToSheet = addDataToSheet
     GASHelper.sendMailOnEdit = sendMailOnEdit
+    GASHelper.moveValues = moveValues
 
     return GASHelper
 
