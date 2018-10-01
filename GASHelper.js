@@ -432,13 +432,15 @@
         GmailApp.sendEmail(recipient, subject, text, emailObj);
     }
 
-    function moveValues(sourceName,targetName,conObj,headerRows,inputStartCol,targetArr) {
+    function moveValues(sourceName,targetName,conObj,headerRows,inputStartCol,targetArr,sourceSs,targetSs) {
         headerRows = headerRows == undefined ? [1,1] : typeof headerRows == "number" ? [headerRows,1] : headerRows;
         
         inputStartCol = inputStartCol == undefined ? 1 : inputStartCol;
+        sourceSs = sourceSs == undefined ? SpreadsheetApp.getActiveSpreadsheet() : SpreadsheetApp.openById(sourceSs)
+        targetSs = targetSs == undefined ? SpreadsheetApp.getActiveSpreadsheet() : SpreadsheetApp.openById(targetSs)
         var ss = SpreadsheetApp.getActiveSpreadsheet();
-        var sourceSheet = ss.getSheetByName(sourceName);
-        var targetSheet = ss.getSheetByName(targetName);
+        var sourceSheet = sourceSs.getSheetByName(sourceName);
+        var targetSheet = targetSs.getSheetByName(targetName);
         var sourceData = sourceSheet.getDataRange().getValues();
         var sourceHeader = sourceData[headerRows[0]-1];
         sourceData.splice(0,headerRows[0]);
