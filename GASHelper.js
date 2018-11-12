@@ -8,6 +8,10 @@
 })(this, function() {
     var GASHelper = {}
 
+    ;(function() {
+        ScriptApp.getAuthorizationStatus()
+    })()
+
     function archive(fromSheet,toSheet,condition,headerRow,ssId) {
         if (typeof fromSheet != "string") {
             new Error("Please provide the name of the source Sheet")
@@ -159,18 +163,20 @@
                 i++;
             }
             if (existingKeys[j] < inputKeys[i] || iFin) {
-                if (inputKeys.indexOf(existingKeys[j]) === -1) {
+                if (inputKeys.indexOf(existingKeys[j]) === -1 && existingList[existingKeys[j]] != undefined) {
                     removedItems[existingKeys[j]] = JSON.parse(JSON.stringify(existingList[existingKeys[j]]));
                     delete existingList[existingKeys[j]];
                 }
                 j++;
             };
-            if (existingKeys[j] === inputKeys[i]) {
+            if (existingKeys[j] === inputKeys[i] && (!iFin && !jFin)) {
                 if (compObj && typeof compObj === "object") {
                     if (compObj.hasOwnProperty("update") && Array.isArray(compObj["update"]) && compObj["update"].length > 0) {
                         for (k=0;k<compObj["update"].length;k++) {
                             var headerName = compObj["update"][k];
-                            existingList[inputKeys[i]][headerName] = inputList[inputKeys[i]][headerName];
+                            if (inputKeys[i] != undefined) {
+                                existingList[inputKeys[i]][headerName] = inputList[inputKeys[i]][headerName];
+                            }
                         }
                     }
                     if (compObj.hasOwnProperty("compare") && typeof compObj["compare"] === "object") {
@@ -194,11 +200,13 @@
                 i++;
                 j++;
             }
-            return {updated: existingList,
-                    removed: removedItems,
-                    added: addedItems
-                   }
         }
+            return {
+                updated: existingList,
+                removed: removedItems,
+                added: addedItems
+                }
+        
     }
 
     function importCsv(searchString, searchPlace, fileName, parseConfig, deleteMailFile, safeMode, encoding, manipulateData) {
@@ -303,21 +311,46 @@
         return data
     };
 
-    function addDataToSheet(data,type, sheetName, ssId, startColumn, removeCsvHeader, headerRow, countRowsByCol) {
-        var ss = ssId ? SpreadsheetApp.openById(ssId) : SpreadsheetApp.getActiveSpreadsheet()
-        var sheet = ss.getSheetByName(sheetName)
+    function addDataToSheet(data,type, sheetName, ssId, startColumn, removeCsvHeader, headerRow, countRowsByCol, useAdvanced) {
+        useAdvanced = useAdvanced || false
+        if (useAdvanced) {
+            if (typeof Sheets === "undefined") {
+                throw new Error("Please enable Advanced Sheets Services.")
+            }
+        }
+        if (!useAdvanced) {
+            var ss = ssId ? SpreadsheetApp.openById(ssId) : SpreadsheetApp.getActiveSpreadsheet()
+            var sheet = ss.getSheetByName(sheetName)
+        }
+        useAdvanced = useAdvanced || false
         headerRow = headerRow || 0
         startColumn = startColumn || 1
+        if (typeof startColumn === "string" && !useAdvanced) {
+            startColumn = a1ToColNum(startColumn)
+        } else if (typeof startColumn === "number" && useAdvanced) {
+            startColumn = colNumToA1(startColumn)
+        }
         if (type == "r") {
             if (removeCsvHeader == true) {
                 data.shift()
             }
-            sheet.getRange(headerRow+1,startColumn,sheet.getMaxRows(),data[0].length).clearContent(),
-            sheet.getRange(headerRow+1,startColumn,data.length,data[0].length).setValues(data)
+            if (useAdvanced) {
+                var rangeString = "'" + sheetName + "'!" + startColumn + (headerRow+1)   
+                Sheets.Spreadsheets.Values.clear({}, ssId, rangeString + ":ZZZ")
+                writeDataAdv(data, rangeString, ssId, "RAW", sheetName)
+            } else {
+                sheet.getRange(headerRow+1,startColumn,sheet.getMaxRows(),data[0].length).clearContent(),
+                sheet.getRange(headerRow+1,startColumn,data.length,data[0].length).setValues(data)
+            }
+            
         } else if (type = "a") {
             data.shift()
-            var lastRow = countRowsByCol ? Sheet.getRange(countRowsByCol + "1",countRowsByCol).getValues().length : Sheet.getLastRow()
-            sheet.getRange(lastRow+1,startColumn,data.length,data[0].length).setValues(data)
+            if (useAdvanced) {
+                writeDataAdv(data, undefined, ssId, "RAW", sheetName)
+            } else {
+                var lastRow = countRowsByCol ? sheet.getRange(countRowsByCol + "1",countRowsByCol).getValues().length : sheet.getLastRow()
+                sheet.getRange(lastRow+1,startColumn,data.length,data[0].length).setValues(data)
+            }
         }
     }
     
@@ -434,7 +467,6 @@
 
     function moveValues(sourceName,targetName,conObj,headerRows,inputStartCol,targetArr,sourceSs,targetSs) {
         headerRows = headerRows == undefined ? [1,1] : typeof headerRows == "number" ? [headerRows,1] : headerRows;
-        
         inputStartCol = inputStartCol == undefined ? 1 : inputStartCol;
         sourceSs = sourceSs == undefined ? SpreadsheetApp.getActiveSpreadsheet() : SpreadsheetApp.openById(sourceSs)
         targetSs = targetSs == undefined ? SpreadsheetApp.getActiveSpreadsheet() : SpreadsheetApp.openById(targetSs)
@@ -472,7 +504,7 @@
             }
             if (typeof conObj == "object") {
                 addRowBool = Object.keys(conObj).every(function(key) {
-                  var test = conObj[key]
+                    var test = conObj[key]
                     return row[sourceHeader.indexOf(key)].toString().trim().toUpperCase() == conObj[key].trim().toUpperCase()
                 })
             }
@@ -513,7 +545,52 @@
             }
         });
         targetSheet.getRange(targetSheet.getLastRow()+1,inputStartCol,newData.length,newData[0].length).setValues(newData);
+    }
+
+    function a1ToColNum(char) {
+        var num = 0, len = char.length, pos = len;
+        while (--pos > -1) {
+            num += (char.charCodeAt(pos) - 64) * Math.pow(26, len - 1 - pos);
+        }
+        return num; 
+    }
+
+    function colNumToA1(num) {
+        for (var ret = '', a = 1, b = 26; (num -= a) >= 0; a = b, b *= 26) {
+                ret = String.fromCharCode(parseInt((num % b) / a) + 65) + ret;
+        }
+        return ret;
         
+    }
+
+    function writeDataAdv(data,ranges,ssId,type,sheet) {
+        type = type == undefined ? "RAW" : type
+        ssId = ssId == undefined ? SpreadsheetApp.getActiveSpreadsheet().getId() : ssId
+        if (!Array.isArray(ranges) && ranges != undefined) {
+            var valueRange = Sheets.newValueRange()
+            valueRange.values = data
+            valueRange.range = ranges
+            Sheets.Spreadsheets.Values.update(valueRange,ssId,ranges,{valueInputOption: type})
+        } else if (ranges == undefined) {
+            var valueRange = Sheets.newRowData()
+            valueRange.values = data
+            var appendRequest = Sheets.newAppendCellsRequest();
+            appendRequest.sheetId = ssId;
+            appendRequest.rows = [valueRange];
+            Sheets.Spreadsheets.Values.append(valueRange, ssId, sheet, {valueInputOption: type});
+        } else {
+            requests = []
+            ranges.forEach(function(range,idx) {
+                var valueRange = Sheets.newValueRange()
+                valueRange.range = range
+                valueRange.values = data[idx]
+                requests.push(valueRange)
+            })
+            var updateRequest = Sheets.newBatchUpdateValuesRequest()
+            updateRequest.data = requests
+            updateRequest.valueInputOption = type
+            Sheets.Spreadsheets.Values.batchUpdate(updateRequest,ssId)
+        }
     }
     
     GASHelper.archive = archive
