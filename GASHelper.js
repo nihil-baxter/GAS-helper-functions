@@ -8,9 +8,9 @@
 })(this, function() {
     var GASHelper = {}
 
-    ;(function() {
-        ScriptApp.getAuthorizationStatus()
-    })()
+    function permission() {
+        GmailApp.getInboxUnreadCount()
+    }
 
     function archive(fromSheet,toSheet,condition,headerRow,ssId) {
         if (typeof fromSheet != "string") {
@@ -311,18 +311,20 @@
         return data
     };
 
-    function addDataToSheet(data,type, sheetName, ssId, startColumn, removeCsvHeader, headerRow, countRowsByCol, useAdvanced) {
+    function addDataToSheet(data, sheetName, ssId, type, startColumn, removeCsvHeader, headerRow, countRowsByCol, useAdvanced) {
         useAdvanced = useAdvanced || false
         if (useAdvanced) {
             if (typeof Sheets === "undefined") {
                 throw new Error("Please enable Advanced Sheets Services.")
             }
+            ssId = ssId ? ssId : SpreadsheetApp.getActiveSpreadsheet().getId()
         }
         if (!useAdvanced) {
             var ss = ssId ? SpreadsheetApp.openById(ssId) : SpreadsheetApp.getActiveSpreadsheet()
-            var sheet = ss.getSheetByName(sheetName)
+            var sheet = sheet ? ss.getSheetByName(sheetName) : ss.getActiveSheet()
         }
-        useAdvanced = useAdvanced || false
+        removeCsvHeader = removeCsvHeader || false
+        type = type || "r"
         headerRow = headerRow || 0
         startColumn = startColumn || 1
         if (typeof startColumn === "string" && !useAdvanced) {
@@ -344,7 +346,9 @@
             }
             
         } else if (type = "a") {
-            data.shift()
+            if (removeCsvHeader == true) {
+                data.shift()
+            }
             if (useAdvanced) {
                 writeDataAdv(data, undefined, ssId, "RAW", sheetName)
             } else {
@@ -354,6 +358,20 @@
         }
     }
     
+    /**
+     * 
+     * 
+     * @param {Object} event 
+     * @param {String} condSheet 
+     * @param {String} condColHeader 
+     * @param {any} cond 
+     * @param {any} textObj 
+     * @param {any} subjObj 
+     * @param {any} emailRecColHeader 
+     * @param {any} emailObj 
+     * @param {any} headerRow 
+     * @returns 
+     */
     function sendMailOnEdit(event, condSheet, condColHeader, cond, textObj, subjObj, emailRecColHeader, emailObj, headerRow) {
         if (arguments.length < 8) {
             throw Error("Not enough arguments")
@@ -599,6 +617,7 @@
     GASHelper.addDataToSheet = addDataToSheet
     GASHelper.sendMailOnEdit = sendMailOnEdit
     GASHelper.moveValues = moveValues
+    GASHelper.permission = permission
 
     return GASHelper
 
