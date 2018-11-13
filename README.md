@@ -60,3 +60,7 @@ Gets and parses a CSV-file returning the data as a 2-dimensional array. It get's
 | **``headerRow``** | Number | (***optional***) Sets the last row containing headers. Only needed if type is ``"r"``. The data will be written after the ``headerRow``. Defaults to ``1`` |
 | **``countRowsByColumn``** | String | (***optional***) Column to use for finding the last row. Only becomes necessary if the Sheet contains formulas that span further down than the rest of the data. |
 | **``useAdvancedServices``** | Boolean | (***optional***) If set to ``true`` the script will use the [Advanced Sheets Service](https://developers.google.com/apps-script/advanced/sheets) to write the data. Highly recommended for large data sets. Requires activating the Advanced Sheets Service and Sheets API. Defaults to ``false`` |
+
+### Version History
+
+* **v1.0** initial release
